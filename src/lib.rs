@@ -7,9 +7,12 @@ pub mod errors;
 pub mod implementations;
 pub mod secret_sharing;
 
-/// This value represents the maximum size of a unique share in bytes.
+pub const MODULO_BYTE_SIZE: usize = MERSENNE_EXP.div_ceil(8);
+/// This value represents the maximum size of a unique share in bytes,
+/// rounded to 8 for easier limbs manipulation
 /// It is based on the prime modulo used in the calculations.
-pub const SHARE_BYTE_SIZE: usize = MERSENNE_EXP.div_ceil(8);
+pub const SHARE_BYTE_SIZE: usize = MODULO_BYTE_SIZE.next_multiple_of(8);
+pub type Share = [u8; SHARE_BYTE_SIZE];
 pub const MIN_THRESHOLD: usize = 2;
 
 /// This value defines the prime number used in the modular calculations.
@@ -98,6 +101,8 @@ pub trait FieldElement:
     + for<'a> Div<&'a Self, Output = Self>
     + From<Vec<u8>>
     + Into<Vec<u8>>
+    + for<'a> From<&'a Share>
+    + Into<Share>
     + From<usize>
     + From<i32>
     + Clone

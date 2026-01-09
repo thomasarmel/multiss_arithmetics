@@ -4,7 +4,9 @@ use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterato
 use tokio::{sync::mpsc, task::spawn_blocking};
 use tracing::error;
 
-use crate::{errors::ShamirError, secret_sharing::Polynomial, FieldElement};
+use crate::{
+    errors::ShamirError, secret_sharing::Polynomial, FieldElement, Share, SHARE_BYTE_SIZE,
+};
 
 #[derive(Debug)]
 pub struct Parameters {
@@ -61,7 +63,7 @@ impl Parameters {
 ///
 /// - self : the secret
 /// - `parameters`: needs to be mutable because of the rng, which has an internal state
-pub fn shamir<T: FieldElement>(secret: &[u8], parameters: &mut Parameters) -> Vec<Vec<u8>> {
+pub fn shamir<T: FieldElement>(secret: &Share, parameters: &mut Parameters) -> Vec<Share> {
     let polynomial = Polynomial::<T>::new_shamir(
         secret,
         parameters.threshold - 1,
@@ -70,9 +72,9 @@ pub fn shamir<T: FieldElement>(secret: &[u8], parameters: &mut Parameters) -> Ve
 
     let mut shares = Vec::with_capacity(parameters.nb_of_shares);
     for i in 1..=parameters.nb_of_shares {
-        let share: Vec<u8> = polynomial.evaluate_with_horner_method(&i.into(), 0).into();
+        let share: Share = polynomial.evaluate_with_horner_method(&i.into(), 0).into();
         if share.is_empty() {
-            shares.push(vec![0]);
+            shares.push([0u8; SHARE_BYTE_SIZE]);
         } else {
             shares.push(share);
         }
@@ -88,18 +90,14 @@ pub fn shamir<T: FieldElement>(secret: &[u8], parameters: &mut Parameters) -> Ve
 ///
 /// Will return `Err` if two abscissas (`xs`) are identical
 pub fn get_lagrange_factors<T: FieldElement>(xs: &[i32]) -> Result<Vec<T>, ShamirError> {
+    let n = xs.len();
     let xs = xs.iter().map(|x| T::from(*x)).collect::<Vec<T>>();
     let product: T = xs.iter().fold(T::one(), |prod, x| prod * x);
-    let mut numerators = Vec::new();
 
-    for x in &xs {
-        numerators.push(product.clone() / x);
-    }
-
-    let mut denominators = Vec::new();
+    let mut denominators = Vec::with_capacity(n);
 
     for (i, xi) in xs.iter().enumerate() {
-        denominators.push(T::one());
+        denominators.push(xi.clone());
         for (j, xj) in xs.iter().enumerate() {
             if i != j {
                 if xi == xj {
@@ -110,11 +108,10 @@ pub fn get_lagrange_factors<T: FieldElement>(xs: &[i32]) -> Result<Vec<T>, Shami
         }
     }
 
-    let mut factors = Vec::new();
+    let mut factors = vec![product.clone(); n];
 
-    for (denom, mut num) in denominators.iter().zip(numerators) {
-        num /= denom;
-        factors.push(num);
+    for i in 0..n {
+        factors[i] /= &denominators[i];
     }
 
     Ok(factors)
@@ -131,13 +128,15 @@ pub fn get_lagrange_factors<T: FieldElement>(xs: &[i32]) -> Result<Vec<T>, Shami
 /// # Errors
 ///
 /// This function will return an [`InputSim`](crate::errors::Error::InputSim) error if some points have the same value.
-pub fn lagrange<T: FieldElement>(factors: &[T], ys: &[Vec<u8>]) -> Result<Vec<u8>, ShamirError> {
-    let ys = ys.iter().map(|y| T::from(y.clone())).collect::<Vec<T>>();
-    let mut secret = T::from(0);
-    for (factor, mut yi) in factors.iter().zip(ys) {
-        yi *= factor;
-        secret += &yi;
+pub fn lagrange<T: FieldElement>(factors: &[T], ys: &[Share]) -> Result<Share, ShamirError> {
+    let mut secret = T::zero();
+
+    for (factor, y) in factors.iter().zip(ys.iter()) {
+        let mut term = T::from(y);
+        term *= factor;
+        secret += &term;
     }
+
     Ok(secret.into())
 }
 
@@ -145,9 +144,9 @@ pub fn lagrange<T: FieldElement>(factors: &[T], ys: &[Vec<u8>]) -> Result<Vec<u8
 /// Each channel will stream the bytes of a single Shamir share.
 /// The function returns immediately. The share generation is done in a background thread.
 pub fn stream_shamir_shares<T: FieldElement>(
-    secret: Vec<u8>,
+    secret: Share,
     parameters: &mut Parameters,
-) -> Vec<mpsc::Receiver<Vec<u8>>> {
+) -> Vec<mpsc::Receiver<Share>> {
     let mut senders = Vec::with_capacity(parameters.nb_of_shares);
     let mut receivers = Vec::with_capacity(parameters.nb_of_shares);
 
@@ -209,18 +208,21 @@ mod tests {
     #[test]
     fn test_new_shamir() {
         let mut rng = rand::rng();
-        let secret: Vec<u8> = (0..10).map(|_| rng.random()).collect();
+
+        let mut chacha_rand = ChaCha20Rng::from_os_rng();
+        let secret: Share = Element::gen_random(&mut chacha_rand).into();
         let degree = rng.random_range(1..10);
         let mut rng = ChaCha20Rng::from_os_rng();
-        let polynomial = Polynomial::<Element>::new_shamir(&secret.clone(), degree, &mut rng);
+        let polynomial = Polynomial::<Element>::new_shamir(&secret, degree, &mut rng);
         assert_eq!(polynomial.0.len(), degree + 1);
-        assert_eq!(polynomial.0[0], Element::from(secret));
+        assert_eq!(polynomial.0[0], Element::from(&secret));
     }
 
     #[test]
     fn shamir_correct_number_of_shares() {
         let mut rng = rand::rng();
-        let secret: Vec<u8> = (0..10).map(|_| rng.random()).collect();
+        let mut chacha_rand = ChaCha20Rng::from_os_rng();
+        let secret: Share = Element::gen_random(&mut chacha_rand).into();
 
         let k = rng.random_range(1..100);
         let n = rng.random_range(k..200);
@@ -255,34 +257,41 @@ mod tests {
     #[test]
     fn lagrange_correct_input() {
         let xs = vec![1, 2, 3];
-        let ys = vec![
-            15_i32.to_be_bytes().to_vec(),
-            10_i32.to_be_bytes().to_vec(),
-            37_i32.to_be_bytes().to_vec(),
-        ];
+        let mut y1 = [0u8; SHARE_BYTE_SIZE];
+        y1[SHARE_BYTE_SIZE - 1] = 15;
+        let mut y2 = [0u8; SHARE_BYTE_SIZE];
+        y2[SHARE_BYTE_SIZE - 1] = 10;
+        let mut y3 = [0u8; SHARE_BYTE_SIZE];
+        y3[SHARE_BYTE_SIZE - 1] = 37;
+        let ys = vec![y1, y2, y3];
         let factors = get_lagrange_factors(&xs).unwrap();
         let res = lagrange::<Element>(&factors, &ys).unwrap();
-        assert_eq!(res, vec![52_u8])
+        let mut expected = [0u8; SHARE_BYTE_SIZE];
+        expected[SHARE_BYTE_SIZE - 1] = 52;
+        assert_eq!(res, expected)
     }
     #[test]
     fn lagrange_correct_input_negative() {
         let xs = vec![1, 2, 3];
-        let ys = vec![
-            15_i32.to_be_bytes().to_vec(),
-            1000_i32.to_be_bytes().to_vec(),
-            37_i32.to_be_bytes().to_vec(),
-        ];
-        let secret: Vec<u8> = Element::from(-2918).into();
+        let mut y1 = [0u8; SHARE_BYTE_SIZE];
+        y1[SHARE_BYTE_SIZE - 1] = 15;
+        let mut y2 = [0u8; SHARE_BYTE_SIZE];
+        y2[SHARE_BYTE_SIZE - 1] = 100;
+        let mut y3 = [0u8; SHARE_BYTE_SIZE];
+        y3[SHARE_BYTE_SIZE - 1] = 37;
+        let ys = vec![y1, y2, y3];
+        let secret: Share = Element::from(-218).into();
         let factors = get_lagrange_factors(&xs).unwrap();
         let res = lagrange::<Element>(&factors, &ys).unwrap();
         assert_eq!(res, secret);
     }
     #[test]
     fn lagrange_input_permutation() {
-        let a1 = rand::random::<u32>();
-        let a2 = rand::random::<u32>();
+        let mut chacha_rand = ChaCha20Rng::from_os_rng();
+        let a1: Share = Element::gen_random(&mut chacha_rand).into();
+        let a2: Share = Element::gen_random(&mut chacha_rand).into();
         let mut xs = vec![1, 2];
-        let mut ys = vec![a1.to_be_bytes().to_vec(), a2.to_be_bytes().to_vec()];
+        let mut ys = vec![a1, a2];
         let factors = get_lagrange_factors(&xs).unwrap();
         let res = lagrange::<Element>(&factors, &ys).unwrap();
         xs.reverse();
@@ -298,7 +307,9 @@ mod tests {
     #[test]
     fn shamir_lagrange() {
         let mut rng = rand::rng();
-        let secret: Vec<u8> = (0..10).map(|_| rng.random()).collect();
+        let mut chacha_rand = ChaCha20Rng::from_os_rng();
+        let e = Element::gen_random(&mut chacha_rand);
+        let secret: Share = e.into();
 
         let k = rng.random_range(2..100);
         let n = rng.random_range(k..200);
@@ -309,22 +320,13 @@ mod tests {
         let factors = get_lagrange_factors(&xs).unwrap();
         let res = lagrange::<Element>(&factors, &ys).unwrap();
 
-        // Padding the result, just in case
-        let res = if res.len() < secret.len() {
-            let mut v = vec![0; secret.len() - res.len()];
-            v.extend(res.iter());
-            v
-        } else {
-            res
-        };
-
         assert_eq!(secret, res);
     }
 
     #[tokio::test]
     async fn test_stream_shamir_shares() {
-        let mut rng = rand::rng();
-        let secret: Vec<u8> = (0..10).map(|_| rng.random()).collect();
+        let mut chacha_rand = ChaCha20Rng::from_os_rng();
+        let secret: Share = Element::gen_random(&mut chacha_rand).into();
 
         let k = 5;
         let n = 10;
@@ -346,7 +348,7 @@ mod tests {
         // Sort shares by their original index to ensure correct order for Lagrange interpolation
         received_shares.sort_by_key(|(key, _)| *key);
 
-        let shares_for_reconstruction: Vec<Vec<u8>> = received_shares
+        let shares_for_reconstruction: Vec<[u8; SHARE_BYTE_SIZE]> = received_shares
             .into_iter()
             .take(k)
             .map(|(_, share)| share)
@@ -355,14 +357,6 @@ mod tests {
         let xs = (1..=k).map(|i| i as i32).collect::<Vec<i32>>();
         let factors = get_lagrange_factors(&xs).unwrap();
         let res = lagrange::<Element>(&factors, &shares_for_reconstruction).unwrap();
-
-        let res = if res.len() < secret.len() {
-            let mut v = vec![0; secret.len() - res.len()];
-            v.extend(res.iter());
-            v
-        } else {
-            res
-        };
 
         assert_eq!(secret, res);
     }

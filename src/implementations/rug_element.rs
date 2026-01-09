@@ -1,4 +1,4 @@
-use crate::{FieldElement, MERSENNE_EXP, SHARE_BYTE_SIZE};
+use crate::{FieldElement, Share, MERSENNE_EXP, SHARE_BYTE_SIZE};
 use rand::RngCore;
 use rand_chacha::ChaCha20Rng;
 use rug::integer::Order;
@@ -154,6 +154,23 @@ impl From<RugElement> for Vec<u8> {
             bytes.remove(0);
         }
         bytes
+    }
+}
+
+impl From<&Share> for RugElement {
+    fn from(value: &Share) -> Self {
+        let mut element = Self(Integer::from_digits(value, Order::Msf));
+        element.reduce_in_place();
+        element
+    }
+}
+
+impl From<RugElement> for Share {
+    fn from(value: RugElement) -> Self {
+        let mut share = [0u8; SHARE_BYTE_SIZE];
+        let bytes = value.0.to_digits(Order::Msf);
+        share[SHARE_BYTE_SIZE - bytes.len()..].copy_from_slice(&bytes);
+        share
     }
 }
 

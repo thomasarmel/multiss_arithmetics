@@ -1,4 +1,4 @@
-use crate::{FieldElement, MERSENNE_EXP};
+use crate::{FieldElement, Share, MERSENNE_EXP, SHARE_BYTE_SIZE};
 use malachite::base::num::arithmetic::traits::{Mod, ModInverse, ModSub, ModSubAssign};
 use malachite::base::num::basic::traits::Zero;
 use malachite::base::num::random::random_primitive_ints;
@@ -7,7 +7,7 @@ use malachite::natural::random::get_random_natural_less_than;
 use malachite::Natural;
 use rand::RngCore;
 use rand_chacha::ChaCha20Rng;
-use std::iter::repeat;
+use std::iter::repeat_n;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use std::sync::LazyLock;
 
@@ -149,7 +149,7 @@ impl From<Vec<u8>> for MalachiteElement {
     fn from(mut value: Vec<u8>) -> Self {
         let pad_len = 8 - value.len().rem_euclid(8);
         value.reserve_exact(pad_len);
-        value.splice(0..0, repeat(0).take(pad_len));
+        value.splice(0..0, repeat_n(0, pad_len));
         let mut u64s = Vec::with_capacity(value.len() / 8);
 
         value.chunks_exact(8).for_each(|chunk| {
@@ -175,6 +175,37 @@ impl From<MalachiteElement> for Vec<u8> {
         let first_nz = bytes.iter().position(|&b| b != 0).unwrap_or(bytes.len());
         bytes.drain(..first_nz);
         bytes
+    }
+}
+
+impl From<&Share> for MalachiteElement {
+    fn from(value: &Share) -> Self {
+        // /8 always work because the lenght of a `Share` is a multiple of 8
+        let mut u64s = Vec::with_capacity(value.len() / 8);
+
+        value.chunks_exact(8).for_each(|chunk| {
+            u64s.push(u64::from_be_bytes([
+                chunk[0], chunk[1], chunk[2], chunk[3], chunk[4], chunk[5], chunk[6], chunk[7],
+            ]))
+        });
+
+        let mut element = Self(Natural::from_owned_limbs_desc(u64s));
+        element.reduce_in_place();
+        element
+    }
+}
+impl From<MalachiteElement> for Share {
+    fn from(value: MalachiteElement) -> Self {
+        let mut out = [0u8; SHARE_BYTE_SIZE];
+        let limbs = value.0.into_limbs_desc();
+        let mut start = SHARE_BYTE_SIZE - limbs.len() * 8;
+
+        for limb in limbs {
+            out[start..start + 8].copy_from_slice(&limb.to_be_bytes());
+            start += 8;
+        }
+
+        out
     }
 }
 

@@ -1,6 +1,6 @@
 use rand_chacha::ChaCha20Rng;
 
-use crate::{errors::BirkhoffError, secret_sharing::Polynomial, FieldElement};
+use crate::{errors::BirkhoffError, secret_sharing::Polynomial, FieldElement, Share};
 
 use super::primitives::BirkhoffShare;
 
@@ -54,7 +54,7 @@ impl BProtocol {
 }
 
 pub fn birkhoff_split<T: FieldElement>(
-    secret: &[u8],
+    secret: &Share,
     protocol_parameters: &BProtocol,
     rng: &mut ChaCha20Rng,
 ) -> Vec<BirkhoffShare<T>> {
@@ -90,12 +90,13 @@ mod tests {
             protocol::{birkhoff_split, BProtocol},
         },
         implementations::Element,
+        SHARE_BYTE_SIZE,
     };
 
     #[test]
     fn generate_shares_order_1() {
         let birkhoff_protocol = BProtocol::new(4, vec![1, 4]).unwrap();
-        let secret = b"test_secret".to_vec();
+        let secret = [5u8; SHARE_BYTE_SIZE];
 
         let mut rng = ChaCha20Rng::from_os_rng();
         let mut birkhoff_shares = birkhoff_split::<Element>(&secret, &birkhoff_protocol, &mut rng);
@@ -105,7 +106,7 @@ mod tests {
                 .unwrap();
 
         let solution = system.solution().unwrap();
-        assert_eq!(Element::from(secret), solution[0]);
+        assert_eq!(Element::from(&secret), solution[0]);
     }
 
     #[test]
@@ -115,7 +116,7 @@ mod tests {
             subnetworks: vec![2, 0, 3], // We want the shares to be 2 shares of order 0: P(1) P(2)
                                         // and 3 shares of order 2: P''(1) P''(2) P''(3)
         };
-        let secret = b"test_secret".to_vec();
+        let secret = [5u8; SHARE_BYTE_SIZE];
 
         let mut rng = ChaCha20Rng::from_os_rng();
         let mut birkhoff_shares = birkhoff_split::<Element>(&secret, &birkhoff_protocol, &mut rng);
@@ -125,7 +126,7 @@ mod tests {
                 .unwrap();
 
         let solution = system.solution().unwrap();
-        assert_eq!(Element::from(secret), solution[0]);
+        assert_eq!(Element::from(&secret), solution[0]);
     }
 
     #[test]
@@ -135,7 +136,7 @@ mod tests {
             subnetworks: vec![3, 0, 0, 2], // We want the shares to be 2 shares of order 0: P(1) P(2)
                                            // and 3 shares of order 2: P''(1) P''(2) P''(3)
         };
-        let secret = b"test_secret".to_vec();
+        let secret = [5u8; SHARE_BYTE_SIZE];
 
         let mut rng = ChaCha20Rng::from_os_rng();
         let mut birkhoff_shares = birkhoff_split::<Element>(&secret, &birkhoff_protocol, &mut rng);
@@ -145,7 +146,7 @@ mod tests {
                 .unwrap();
 
         let solution = system.solution().unwrap();
-        assert_eq!(Element::from(secret), solution[0]);
+        assert_eq!(Element::from(&secret), solution[0]);
     }
 
     #[test]

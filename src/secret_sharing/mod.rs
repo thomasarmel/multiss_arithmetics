@@ -1,6 +1,6 @@
 use rand_chacha::ChaCha20Rng;
 
-use crate::FieldElement;
+use crate::{FieldElement, Share};
 
 mod birkoff;
 mod packed;
@@ -10,9 +10,9 @@ pub mod shamir;
 /// `vec![3,0,2]` represents P(x) = 2x²+3
 pub struct Polynomial<T>(Vec<T>);
 impl<T: FieldElement> Polynomial<T> {
-    pub fn new_shamir(secret: &[u8], degree: usize, rng: &mut ChaCha20Rng) -> Self {
+    pub fn new_shamir(secret: &Share, degree: usize, rng: &mut ChaCha20Rng) -> Self {
         let mut coefficients = Vec::with_capacity(degree + 1);
-        coefficients.push(T::from_slice(secret));
+        coefficients.push(T::from(secret));
         for _ in 1..=degree {
             coefficients.push(T::gen_random(rng));
         }

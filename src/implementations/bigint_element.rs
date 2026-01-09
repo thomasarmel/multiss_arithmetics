@@ -1,4 +1,4 @@
-use crate::{FieldElement, MERSENNE_EXP};
+use crate::{FieldElement, Share, MERSENNE_EXP, SHARE_BYTE_SIZE};
 use num_bigint::{BigInt, Sign};
 use rand::RngCore;
 use rand_chacha::ChaCha20Rng;
@@ -153,6 +153,23 @@ impl From<BigIntElement> for Vec<u8> {
             bytes.remove(0);
         }
         bytes
+    }
+}
+
+impl From<&Share> for BigIntElement {
+    fn from(value: &Share) -> Self {
+        let mut element = Self(BigInt::from_bytes_be(Sign::Plus, value));
+        element.reduce_in_place();
+        element
+    }
+}
+
+impl From<BigIntElement> for Share {
+    fn from(value: BigIntElement) -> Self {
+        let mut share = [0u8; SHARE_BYTE_SIZE];
+        let (_, bytes) = value.0.to_bytes_be();
+        share[SHARE_BYTE_SIZE - bytes.len()..].copy_from_slice(&bytes);
+        share
     }
 }
 

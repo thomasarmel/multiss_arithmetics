@@ -43,11 +43,16 @@ macro_rules! vecbi {
 /// needs to be called for each implementation
 /// It gathers all the tests in one function for an easier call
 fn test_field_element<T: FieldElement>() {
-    use rand::Rng;
+    use rand::{Rng, SeedableRng};
+    use rand_chacha::ChaCha20Rng;
+
+    use crate::Share;
     let mut rng = rand::rng();
-    let secret: Vec<u8> = (0..10).map(|_| rng.random()).collect();
-    let secret_t: T = secret.clone().into();
-    assert_eq!(secret, secret_t.into(), "Failure with From<Vec<u8>>");
+    let mut chacha_rand = ChaCha20Rng::from_os_rng();
+    let secret: Share = T::gen_random(&mut chacha_rand).into();
+    let secret_t: T = (&secret).into();
+    let out: Share = secret_t.into();
+    assert_eq!(secret, out, "Failure with From<Vec<u8>>");
 
     let a = rng.random::<i16>() as i32;
     let b = rng.random::<i16>() as i32;

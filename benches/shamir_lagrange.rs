@@ -3,8 +3,11 @@ use std::hint::black_box;
 use arithmetics::{
     implementations::Element,
     secret_sharing::shamir::{get_lagrange_factors, lagrange, shamir, Parameters},
+    FieldElement, Share,
 };
 use criterion::{criterion_group, criterion_main, Criterion};
+use rand::SeedableRng;
+use rand_chacha::ChaCha20Rng;
 
 #[cfg(feature = "rug")]
 const IMPL: &str = "rug";
@@ -16,7 +19,8 @@ const IMPL: &str = "bigint";
 fn bench_shamir(c: &mut Criterion) {
     let mut group = c.benchmark_group(format!("shamir/{}", IMPL));
 
-    let secret = vec![0u8; 1000];
+    let mut chacha_rand = ChaCha20Rng::from_os_rng();
+    let secret: Share = Element::gen_random(&mut chacha_rand).into();
 
     let mut params = Parameters::new(5, 8).unwrap();
 
@@ -35,7 +39,8 @@ fn bench_shamir(c: &mut Criterion) {
 fn bench_lagrange(c: &mut Criterion) {
     let mut group = c.benchmark_group(format!("lagrange/{}", IMPL));
 
-    let secret = vec![42u8; 32];
+    let mut chacha_rand = ChaCha20Rng::from_os_rng();
+    let secret: Share = Element::gen_random(&mut chacha_rand).into();
 
     let mut params = Parameters::new(5, 8).unwrap();
 
