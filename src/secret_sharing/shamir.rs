@@ -8,7 +8,7 @@ use crate::{
     errors::ShamirError, secret_sharing::Polynomial, FieldElement, Share, SHARE_BYTE_SIZE,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Parameters {
     threshold: usize,
     nb_of_shares: usize,
