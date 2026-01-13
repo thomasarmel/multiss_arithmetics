@@ -41,12 +41,9 @@ impl FieldElement for MalachiteElement {
         Self(Natural::from(1u8))
     }
     fn gen_random(rng: &mut ChaCha20Rng) -> Self {
-        let mut seed = [0u8; 32];
-        rng.fill_bytes(&mut seed);
-        Self(get_random_natural_less_than(
-            &mut random_primitive_ints(Seed::from_bytes(seed)),
-            &PRIME_MODULO,
-        ))
+        let mut raw = [0u8; SHARE_BYTE_SIZE];
+        rng.fill_bytes(&mut raw);
+        Self::from(&raw)
     }
 
     fn from_slice(bytes: &[u8]) -> Self {
