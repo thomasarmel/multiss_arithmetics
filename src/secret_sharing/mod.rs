@@ -8,6 +8,7 @@ pub mod shamir;
 
 /// Represents a polynomial with its coefficients starting with the constant term
 /// `vec![3,0,2]` represents P(x) = 2x²+3
+#[derive(Debug, Clone)]
 pub struct Polynomial<T>(Vec<T>);
 impl<T: FieldElement> Polynomial<T> {
     pub fn new_shamir(secret: &Share, degree: usize, rng: &mut ChaCha20Rng) -> Self {

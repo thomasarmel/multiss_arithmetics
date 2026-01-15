@@ -1,9 +1,6 @@
 use crate::{FieldElement, Share, MERSENNE_EXP, SHARE_BYTE_SIZE};
 use malachite::base::num::arithmetic::traits::{Mod, ModInverse, ModSub, ModSubAssign};
 use malachite::base::num::basic::traits::Zero;
-use malachite::base::num::random::random_primitive_ints;
-use malachite::base::random::Seed;
-use malachite::natural::random::get_random_natural_less_than;
 use malachite::Natural;
 use rand::RngCore;
 use rand_chacha::ChaCha20Rng;
