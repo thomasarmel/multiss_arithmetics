@@ -1,8 +1,13 @@
+use std::{
+    sync::mpsc::{sync_channel, Receiver},
+    thread,
+};
+
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 use tokio::{sync::mpsc, task::spawn_blocking};
-use tracing::error;
+use tracing::{debug, error};
 
 use crate::{
     errors::ShamirError, secret_sharing::Polynomial, FieldElement, Share, SHARE_BYTE_SIZE,
@@ -80,6 +85,49 @@ pub fn shamir<T: FieldElement>(secret: &Share, parameters: &mut Parameters) -> V
         }
     }
     shares
+}
+pub struct Shamirizer<T> {
+    random_shares: Receiver<T>,
+    degree: usize,
+    n: usize,
+}
+impl<T: FieldElement> Shamirizer<T> {
+    pub fn initialize(degree: usize, n: usize) -> Self {
+        let (sender, receiver) = sync_channel(10);
+        thread::spawn(move || {
+            let mut rng = ChaCha20Rng::from_os_rng();
+            loop {
+                let share = T::gen_random(&mut rng);
+                if sender.send(share).is_err() {
+                    debug!("Random shares receiver is closed.");
+                    return;
+                }
+            }
+        });
+        Self {
+            random_shares: receiver,
+            degree,
+            n,
+        }
+    }
+    pub fn shamirize(&self, secret: &Share) -> Vec<Share> {
+        let mut coefficients = Vec::with_capacity(self.degree + 1);
+        coefficients.push(T::from(secret));
+        for _ in 1..=self.degree {
+            coefficients.push(self.random_shares.recv().unwrap());
+        }
+        let polynomial = Polynomial(coefficients);
+        let mut shares = Vec::with_capacity(self.n);
+        for i in 1..=self.n {
+            let share: Share = polynomial.evaluate_with_horner_method(&i.into(), 0).into();
+            if share.is_empty() {
+                shares.push([0u8; SHARE_BYTE_SIZE]);
+            } else {
+                shares.push(share);
+            }
+        }
+        shares
+    }
 }
 
 /// Function used by `lagrange`
