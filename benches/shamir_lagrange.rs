@@ -19,8 +19,8 @@ const IMPL: &str = "bigint";
 fn bench_shamir(c: &mut Criterion) {
     let mut group = c.benchmark_group(format!("shamir/{}", IMPL));
 
-    let mut chacha_rand = ChaCha20Rng::from_os_rng();
-    let secret: Share = Element::gen_random(&mut chacha_rand).into();
+    let mut rng = ChaCha20Rng::from_seed(Default::default());
+    let secret: Share = Element::gen_random(&mut rng).into();
 
     let mut params = Parameters::new(5, 8).unwrap();
 
@@ -39,8 +39,8 @@ fn bench_shamir(c: &mut Criterion) {
 fn bench_lagrange(c: &mut Criterion) {
     let mut group = c.benchmark_group(format!("lagrange/{}", IMPL));
 
-    let mut chacha_rand = ChaCha20Rng::from_os_rng();
-    let secret: Share = Element::gen_random(&mut chacha_rand).into();
+    let mut rng = ChaCha20Rng::from_seed(Default::default());
+    let secret: Share = Element::gen_random(&mut rng).into();
 
     let mut params = Parameters::new(5, 8).unwrap();
 

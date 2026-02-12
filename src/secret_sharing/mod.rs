@@ -55,7 +55,7 @@ impl<T: FieldElement> Polynomial<T> {
 
 #[cfg(test)]
 mod tests {
-    use rand::Rng;
+    use rand::RngExt;
 
     use crate::{implementations::Element, secret_sharing::Polynomial, vecbi};
 

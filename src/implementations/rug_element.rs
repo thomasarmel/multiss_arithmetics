@@ -1,5 +1,5 @@
 use crate::{FieldElement, Share, MERSENNE_EXP, SHARE_BYTE_SIZE};
-use rand::RngCore;
+use rand::Rng;
 use rand_chacha::ChaCha20Rng;
 use rug::integer::Order;
 use rug::{Complete, Integer};

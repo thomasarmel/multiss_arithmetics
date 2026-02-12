@@ -98,7 +98,7 @@ mod tests {
         let birkhoff_protocol = BProtocol::new(4, vec![1, 4]).unwrap();
         let secret = [5u8; SHARE_BYTE_SIZE];
 
-        let mut rng = ChaCha20Rng::from_os_rng();
+        let mut rng = ChaCha20Rng::from_seed(Default::default());
         let mut birkhoff_shares = birkhoff_split::<Element>(&secret, &birkhoff_protocol, &mut rng);
 
         let system =
@@ -118,7 +118,7 @@ mod tests {
         };
         let secret = [5u8; SHARE_BYTE_SIZE];
 
-        let mut rng = ChaCha20Rng::from_os_rng();
+        let mut rng = ChaCha20Rng::from_seed(Default::default());
         let mut birkhoff_shares = birkhoff_split::<Element>(&secret, &birkhoff_protocol, &mut rng);
 
         let system =
@@ -138,7 +138,7 @@ mod tests {
         };
         let secret = [5u8; SHARE_BYTE_SIZE];
 
-        let mut rng = ChaCha20Rng::from_os_rng();
+        let mut rng = ChaCha20Rng::from_seed(Default::default());
         let mut birkhoff_shares = birkhoff_split::<Element>(&secret, &birkhoff_protocol, &mut rng);
 
         let system =

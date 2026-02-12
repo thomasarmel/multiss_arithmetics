@@ -2,7 +2,7 @@ use crate::{FieldElement, Share, MERSENNE_EXP, SHARE_BYTE_SIZE};
 use malachite::base::num::arithmetic::traits::{Mod, ModInverse, ModSub, ModSubAssign};
 use malachite::base::num::basic::traits::Zero;
 use malachite::Natural;
-use rand::RngCore;
+use rand::Rng;
 use rand_chacha::ChaCha20Rng;
 use std::iter::repeat_n;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};

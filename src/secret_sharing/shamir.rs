@@ -39,7 +39,7 @@ impl Parameters {
         if threshold <= 1 {
             return Err(ShamirError::ThresholdTooSmall);
         }
-        let chacha_rand = ChaCha20Rng::from_os_rng();
+        let chacha_rand = ChaCha20Rng::from_seed(Default::default());
 
         Ok(Parameters {
             threshold,
@@ -95,7 +95,7 @@ impl<T: FieldElement> Shamirizer<T> {
     pub fn initialize(degree: usize, n: usize) -> Self {
         let (sender, receiver) = sync_channel(10);
         thread::spawn(move || {
-            let mut rng = ChaCha20Rng::from_os_rng();
+            let mut rng = ChaCha20Rng::from_seed(Default::default());
             loop {
                 let share = T::gen_random(&mut rng);
                 if sender.send(share).is_err() {
@@ -231,7 +231,7 @@ mod tests {
     use crate::{implementations::Element, vecbi};
 
     use super::*;
-    use rand::{seq::SliceRandom, Rng, SeedableRng};
+    use rand::{seq::SliceRandom, RngExt, SeedableRng};
     use tokio_stream::{wrappers::ReceiverStream, StreamExt, StreamMap};
 
     // values are generate as i16 and transformed to i32 to avoid overflowing later
@@ -255,12 +255,9 @@ mod tests {
 
     #[test]
     fn test_new_shamir() {
-        let mut rng = rand::rng();
-
-        let mut chacha_rand = ChaCha20Rng::from_os_rng();
-        let secret: Share = Element::gen_random(&mut chacha_rand).into();
+        let mut rng = ChaCha20Rng::from_seed(Default::default());
+        let secret: Share = Element::gen_random(&mut rng).into();
         let degree = rng.random_range(1..10);
-        let mut rng = ChaCha20Rng::from_os_rng();
         let polynomial = Polynomial::<Element>::new_shamir(&secret, degree, &mut rng);
         assert_eq!(polynomial.0.len(), degree + 1);
         assert_eq!(polynomial.0[0], Element::from(&secret));
@@ -268,9 +265,8 @@ mod tests {
 
     #[test]
     fn shamir_correct_number_of_shares() {
-        let mut rng = rand::rng();
-        let mut chacha_rand = ChaCha20Rng::from_os_rng();
-        let secret: Share = Element::gen_random(&mut chacha_rand).into();
+        let mut rng = ChaCha20Rng::from_seed(Default::default());
+        let secret: Share = Element::gen_random(&mut rng).into();
 
         let k = rng.random_range(1..100);
         let n = rng.random_range(k..200);
@@ -335,9 +331,9 @@ mod tests {
     }
     #[test]
     fn lagrange_input_permutation() {
-        let mut chacha_rand = ChaCha20Rng::from_os_rng();
-        let a1: Share = Element::gen_random(&mut chacha_rand).into();
-        let a2: Share = Element::gen_random(&mut chacha_rand).into();
+        let mut rng = ChaCha20Rng::from_seed(Default::default());
+        let a1: Share = Element::gen_random(&mut rng).into();
+        let a2: Share = Element::gen_random(&mut rng).into();
         let mut xs = vec![1, 2];
         let mut ys = vec![a1, a2];
         let factors = get_lagrange_factors(&xs).unwrap();
@@ -354,9 +350,8 @@ mod tests {
 
     #[test]
     fn shamir_lagrange() {
-        let mut rng = rand::rng();
-        let mut chacha_rand = ChaCha20Rng::from_os_rng();
-        let e = Element::gen_random(&mut chacha_rand);
+        let mut rng = ChaCha20Rng::from_seed(Default::default());
+        let e = Element::gen_random(&mut rng);
         let secret: Share = e.into();
 
         let k = rng.random_range(2..100);
@@ -373,8 +368,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_stream_shamir_shares() {
-        let mut chacha_rand = ChaCha20Rng::from_os_rng();
-        let secret: Share = Element::gen_random(&mut chacha_rand).into();
+        let mut rng = ChaCha20Rng::from_seed(Default::default());
+        let secret: Share = Element::gen_random(&mut rng).into();
 
         let k = 5;
         let n = 10;

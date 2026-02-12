@@ -1,6 +1,6 @@
 use crate::{FieldElement, Share, MERSENNE_EXP, SHARE_BYTE_SIZE};
 use num_bigint::{BigInt, Sign};
-use rand::RngCore;
+use rand::Rng;
 use rand_chacha::ChaCha20Rng;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use std::sync::LazyLock;
