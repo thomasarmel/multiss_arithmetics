@@ -7,6 +7,7 @@ use arithmetics::implementations::Element;
 use arithmetics::{FieldElement, Share};
 
 fn main() {
+    /// TODO simuler le protocole complet des expériences, avec le sous-Shamir sur deux réseau, puis davantage
     // -----------------------------------------------------------------
     // 1. Initialisation et création du secret
     // -----------------------------------------------------------------
