@@ -1,0 +1,13 @@
+{
+  "mode": "standard",
+  "degree_p": 2,
+  "networks": [
+    { "nodes": 10, "degree": 3 },
+    { "nodes": 5, "degree": 2 },
+    { "nodes": 5, "degree": 2 },
+    { "nodes": 5, "degree": 2 },
+    { "nodes": 5, "degree": 2 },
+    { "nodes": 5, "degree": 2 }
+  ],
+  "iterations": 1
+}
