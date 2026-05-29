@@ -170,8 +170,8 @@ fn main() {
     println!("Mode       : {}", config.mode.to_uppercase());
     println!("deg(P)     : {}", config.degree_p);
     println!("Networks   : {:?}", config.networks);
-    println!("Iterations : {}\n", config.iterations);
-    println!("Share size : {} bytes", SHARE_BYTE_SIZE);
+    println!("Iterations : {}", config.iterations);
+    println!("Share size : {} bytes\n", SHARE_BYTE_SIZE);
 
     let mut rng = ChaCha20Rng::from_seed(Default::default());
     let initial_secret: Share = Element::gen_random(&mut rng).into();
@@ -186,7 +186,7 @@ fn main() {
             _ => panic!("Unknown mode. Please use 'standard' or 'local'."),
         };
 
-        // Strict correctness check per iteration
+        // correctness check per iteration
         assert_eq!(
             initial_secret, final_secret,
             "Error on iteration {}: the reconstructed secret does not match the initial one.", i
