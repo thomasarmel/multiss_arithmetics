@@ -29,10 +29,10 @@ Bench configuration is done through JSON files, like [config-standard.json](./co
 
 Configuration fields are the following:
 - `networks`: mode: `"standard"` or `"local"` mode of MULTISS
-- `degree_p`: degree of the first polynomial *P* that is basically used to define the t~nets~ threshold.
+- `degree_p`: degree of the first polynomial *P* that is basically used to define the *tnets* threshold.
 - `networks`: array defining the QKD subnetworks (including the mother QKD network in standard mode), with the following fields:
   - `nodes`: number of nodes in the QKD subnetwork
-  - `degree_q`: degree of the local polynomial, *Q~i~* for standard mode and *P~i~* for local mode. These polynomials define the *t~nodes~* threshold.
+  - `degree_q`: degree of the local polynomial, *Qi* for standard mode and *Pi* for local mode. These polynomials define the *tnodes* threshold.
 - `iterations`: number of iterations for the benchmark
 
 :warning: **In standard mode, the topology of the mother QKD network is defined by the first element of `networks` list, while in local mode, the topology of the mother QKD network is not defined in the config, and is instead determined by the number of daughter QKD networks: the first network is first daughter.**
