@@ -155,7 +155,7 @@ fn simulate_local_sharing(
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
-        eprintln!("Usage: cargo run -- <path_to_config.json>");
+        eprintln!("Usage: {} <path_to_config.json>", args[0]);
         std::process::exit(1);
     }
     let config_path = &args[1];
@@ -200,7 +200,8 @@ fn main() {
     let avg_recon = total_recon_time / config.iterations;
 
     println!("All evaluations succeeded seamlessly!");
-    println!("Average Sharing Time        : {:?}", avg_share);
-    println!("Average Reconstruction Time : {:?}", avg_recon);
+    const REAL_SHARE_BYTE_SIZE: usize = 1211;
+    println!("Average Sharing Time        : {:?} ({} B/s)", avg_share, (REAL_SHARE_BYTE_SIZE as f64/avg_share.as_secs_f64()).round());
+    println!("Average Reconstruction Time : {:?} ({} B/s)", avg_recon, (REAL_SHARE_BYTE_SIZE as f64/avg_recon.as_secs_f64()).round());
 }
 
